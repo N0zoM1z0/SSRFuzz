@@ -21,6 +21,12 @@ if (!function_exists('zregister_opcode_callback')) {
     }
 }
 
+if (!function_exists('zclear')) {
+    function zclear($str)
+    {
+        return false;
+    }
+}
 
 /**
  * Detecting whether a variable is tagged
@@ -113,6 +119,34 @@ function taintinfer_zmark(&$var, $recursive = true)
         }
     }
 }
+
+/**
+ * ★ 新增：遞迴地清除變數的汙染標記
+ * 結構與 taintinfer_zmark 完全對稱
+ * @param mixed $var 要清除標記的變數，可以是字串或陣列
+ * @param bool $recursive 是否遞迴處理陣列
+ */
+function taintinfer_zclear(&$var, $recursive = true)
+{
+    // 如果 zclear 函式不存在，則不執行任何操作
+    if (!function_exists('zclear')) {
+        return;
+    }
+
+    if (is_string($var)) {
+        // 對字串直接呼叫底層的 zclear()
+        zclear($var);
+    } elseif (is_array($var) && $recursive) {
+        // 如果是陣列，則遍歷每一個元素，遞迴呼叫自身
+        foreach ($var as &$value) {
+            taintinfer_zclear($value, $recursive);
+        }
+        // 斷開最後一個元素的引用，這是 foreach(&$value) 的好習慣
+        unset($value);
+    }
+    // 對於非字串和非陣列的類型，我們不進行任何操作
+}
+
 
 /**
  * Detecting callback-related variables

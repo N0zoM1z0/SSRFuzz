@@ -20,6 +20,13 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
+// // BEGIN SANITIZER TEST
+// // ★ 新增：模擬開發者做了安全處理
+// error_log("Before sanitization, taint status is: " . (zcheck($userName) ? 'TAINTED' : 'CLEAN'));
+// $userName = addslashes($userName); // 或者 intval($userName)
+// error_log("After sanitization, taint status is: " . (zcheck($userName) ? 'TAINTED' : 'CLEAN'));
+// // END SANITIZER TEST
+
 // 3. ★★★ 核心修改：模擬字串型注入點，用單引號包裹變數 ★★★ 要用存在sqli漏洞的代码来测试）
 $sql = "SELECT id, name FROM users WHERE name = '" . $userName . "'";
 
