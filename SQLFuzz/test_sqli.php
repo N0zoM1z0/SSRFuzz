@@ -1,46 +1,42 @@
 <?php
 
-// 1. 檢查 GET 請求中是否存在 'id' 參數
-if (empty($_GET['id'])) {
-    // 在 Web 環境中，返回一個錯誤訊息比 die() 更友好
+// 1. 我們現在透過 'name' 參數來查詢
+if (empty($_GET['name'])) {
     header("HTTP/1.1 400 Bad Request");
-    echo "Error: 'id' parameter is missing.";
+    echo "Error: 'name' parameter is missing.";
     exit;
 }
 
-// 2. 從 $_GET 超全局變數中獲取使用者輸入
-$userId = $_GET['id'];
-
-// 注意：我們不再需要手動呼叫 zmark($userId)！
-// 這個工作將由 auto_prepend_file 指定的檔案自動完成。
+// 2. 獲取用戶名
+$userName = $_GET['name'];
 
 $servername = "ssrf_db";
 $username = "root";
 $password = "123456";
 $dbname = "sqli_test";
 
-// 建立連線
 $conn = mysqli_connect($servername, $username, $password, $dbname);
-
-// 檢查連線
 if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// 3. 將來自 Web 的輸入直接拼接到 SQL 查詢中
-$sql = "SELECT id, name FROM users WHERE id = " . $userId;
+// 3. ★★★ 核心修改：模擬字串型注入點，用單引號包裹變數 ★★★ 要用存在sqli漏洞的代码来测试）
+$sql = "SELECT id, name FROM users WHERE name = '" . $userName . "'";
 
-// 4. 執行查詢，這將會觸發 agent.php 中的 sink handler
+echo "[DEBUG] Executing SQL: " . htmlspecialchars($sql) . "<br>\n";
+
 $result = mysqli_query($conn, $sql);
 
-// 為了在瀏覽器或 curl 中更清晰地顯示，我們輸出 HTML 換行符 <br>
 if ($result) {
     echo "--- Query Result ---<br>\n";
+    // ★ 如果注入成功，這裡會印出所有用戶，而不只是一個
+    echo "Rows returned: " . mysqli_num_rows($result) . "<br>\n";
     while ($row = mysqli_fetch_assoc($result)) {
         echo "ID: " . $row["id"] . " - Name: " . $row["name"] . "<br>\n";
     }
     mysqli_free_result($result);
 } else {
+    // 如果注入的 payload 造成語法錯誤，會執行到這裡
     echo "Error: " . mysqli_error($conn);
 }
 
