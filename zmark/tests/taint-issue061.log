@@ -1,0 +1,16 @@
+
+---- EXPECTED OUTPUT
+string(2) "ab"
+string(2) "ab"
+string(2) "ab"
+string(3) "abc"
+string(3) "abc"
+---- ACTUAL OUTPUT
+string(2) "ab"
+string(2) "ab"
+string(2) "ab"
+string(3) "abc"
+
+Deprecated: my_implode(): Passing glue string after array is deprecated. Swap the parameters in /SSRFuzz/zmark/tests/taint-issue061.php on line 20
+string(3) "abc"
+---- FAILED

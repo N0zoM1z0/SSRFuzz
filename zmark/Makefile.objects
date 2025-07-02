@@ -1,0 +1,8 @@
+zmark.lo: /SSRFuzz/zmark/zmark.c
+	$(LIBTOOL) --mode=compile $(CC)  -I. -I/SSRFuzz/zmark $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  -c /SSRFuzz/zmark/zmark.c -o zmark.lo 
+$(phplibdir)/zmark.la: ./zmark.la
+	$(LIBTOOL) --mode=install cp ./zmark.la $(phplibdir)
+
+./zmark.la: $(shared_objects_zmark) $(ZMARK_SHARED_DEPENDENCIES)
+	$(LIBTOOL) --mode=link $(CC) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS) $(LDFLAGS)  -o $@ -export-dynamic -avoid-version -prefer-pic -module -rpath $(phplibdir) $(EXTRA_LDFLAGS) $(shared_objects_zmark) $(ZMARK_SHARED_LIBADD)
+

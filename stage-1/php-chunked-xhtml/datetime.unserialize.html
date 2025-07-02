@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+ <head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>Unserialize an Datetime</title>
+<link media="all" rel="stylesheet" type="text/css" href="styles/03e73060321a0a848018724a6c83de7f-theme-base.css" />
+<link media="all" rel="stylesheet" type="text/css" href="styles/03e73060321a0a848018724a6c83de7f-theme-medium.css" />
+
+ </head>
+ <body class="docs"><div class="navbar navbar-fixed-top">
+  <div class="navbar-inner clearfix">
+    <ul class="nav" style="width: 100%">
+      <li style="float: left;"><a href="datetime.serialize.html">« DateTime::__serialize</a></li>
+      <li style="float: right;"><a href="datetime.wakeup.html">DateTime::__wakeup »</a></li>
+    </ul>
+  </div>
+</div>
+<div id="breadcrumbs" class="clearfix">
+  <ul class="breadcrumbs-container">
+    <li><a href="index.html">PHP Manual</a></li>
+    <li><a href="class.datetimeinterface.html">DateTimeInterface</a></li>
+    <li>Unserialize an Datetime</li>
+  </ul>
+</div>
+<div id="layout">
+  <div id="layout-content"><div id="datetime.unserialize" class="refentry">
+ <div class="refnamediv">
+  <h1 class="refname">DateTime::__unserialize</h1>
+  <h1 class="refname">DateTimeImmutable::__unserialize</h1>
+  <h1 class="refname">DateTimeInterface::__unserialize</h1>
+  <p class="verinfo">(PHP 8 &gt;= 8.2.0)</p><p class="refpurpose"><span class="refname">DateTime::__unserialize</span> -- <span class="refname">DateTimeImmutable::__unserialize</span> -- <span class="refname">DateTimeInterface::__unserialize</span> &mdash; <span class="dc-title">Unserialize an Datetime</span></p>
+
+ </div>
+
+ <div class="refsect1 description" id="refsect1-datetime.unserialize-description">
+  <h3 class="title">Description</h3>
+  <div class="methodsynopsis dc-description">
+   <span class="modifier">public</span> <span class="methodname"><strong>DateTime::__unserialize</strong></span>(<span class="methodparam"><span class="type"><a href="language.types.array.html" class="type array">array</a></span> <code class="parameter">$data</code></span>): <span class="type"><a href="language.types.void.html" class="type void">void</a></span></div>
+
+  <div class="methodsynopsis dc-description"><span class="modifier">public</span> <span class="methodname"><strong>DateTimeImmutable::__unserialize</strong></span>(<span class="methodparam"><span class="type"><a href="language.types.array.html" class="type array">array</a></span> <code class="parameter">$data</code></span>): <span class="type"><a href="language.types.void.html" class="type void">void</a></span></div>
+
+  <div class="methodsynopsis dc-description"><span class="modifier">public</span> <span class="methodname"><strong>DateTimeInterface::__unserialize</strong></span>(<span class="methodparam"><span class="type"><a href="language.types.array.html" class="type array">array</a></span> <code class="parameter">$data</code></span>): <span class="type"><a href="language.types.void.html" class="type void">void</a></span></div>
+
+  <p class="para rdfs-comment">
+   The <a href="language.oop5.magic.html#object.unserialize" class="link">__unserialize()</a> handler.
+  </p>
+ </div>
+
+
+ <div class="refsect1 parameters" id="refsect1-datetime.unserialize-parameters">
+  <h3 class="title">Parameters</h3>
+  <dl>
+   
+    <dt><code class="parameter">data</code></dt>
+    <dd>
+     <p class="para">
+      The serialized <span class="classname"><a href="class.datetime.html" class="classname">DateTime</a></span>.
+     </p>
+    </dd>
+   
+  </dl>
+ </div>
+
+
+ <div class="refsect1 returnvalues" id="refsect1-datetime.unserialize-returnvalues">
+  <h3 class="title">Return Values</h3>
+  <p class="para">
+   The <span class="classname"><a href="class.datetime.html" class="classname">DateTime</a></span> object.
+  </p>
+ </div>
+
+
+ <div class="refsect1 examples" id="refsect1-datetime.unserialize-examples">
+  <h3 class="title">Examples</h3>
+  <div class="example" id="example-2235">
+   <p><strong>Example #1 <span class="function"><strong>DateTime::unserialize()</strong></span> example</strong></p>
+   <div class="example-contents">
+<div class="phpcode"><code><span style="color: #000000"><span style="color: #0000BB">&lt;?php<br />$serializedDate </span><span style="color: #007700">= </span><span style="color: #DD0000">'O:8:"DateTime":3:{s:4:"date";s:26:"2025-03-27 00:00:00.000000";s:13:"timezone_type";i:3;s:8:"timezone";s:3:"UTC";}'</span><span style="color: #007700">;<br /></span><span style="color: #0000BB">var_dump</span><span style="color: #007700">(</span><span style="color: #0000BB">unserialize</span><span style="color: #007700">(</span><span style="color: #0000BB">$serializedDate</span><span style="color: #007700">));<br /></span><span style="color: #0000BB">?&gt;</span></span></code></div>
+   </div>
+
+   <div class="example-contents"><p>The above examples will output:</p></div>
+   <div class="example-contents screen">
+<div class="examplescode"><pre class="examplescode">object(DateTime)#1 (3) {
+  [&quot;date&quot;]=&gt;
+  string(26) &quot;2025-03-27 00:00:00.000000&quot;
+  [&quot;timezone_type&quot;]=&gt;
+  int(3)
+  [&quot;timezone&quot;]=&gt;
+  string(3) &quot;UTC&quot;
+}</pre>
+</div>
+   </div>
+  </div>
+ </div>
+
+
+ <div class="refsect1 seealso" id="refsect1-datetime.unserialize-seealso">
+  <h3 class="title">See Also</h3>
+  <ul class="simplelist">
+   <li><span class="methodname"><a href="datetime.serialize.html" class="methodname" rel="rdfs-seeAlso">DateTime::__serialize()</a> - Serialize a DateTime</span></li>
+  </ul>
+ </div>
+
+</div></div></div></body></html>
