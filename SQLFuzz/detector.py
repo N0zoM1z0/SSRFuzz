@@ -18,7 +18,8 @@ def report_vuln():
     print(f"  Tainted Parameter: {report.get('param', 'N/A')}")
     print(f"  Details: {report.get('details', 'N/A')}")
     print(f"  Final Payload: {report.get('payload', 'N/A')}")
-    
+    # ★ 新增一行，展示注入點的語法上下文
+    print(f"  Injection Context: {report.get('context', 'N/A')}")
     # ★ 新增：美觀地打印呼叫堆疊
     print(f"  Call Stack Trace:")
     # 從報告中獲取呼叫堆疊字串，如果不存在則顯示提示

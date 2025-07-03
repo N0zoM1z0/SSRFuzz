@@ -80,13 +80,16 @@ class Fuzzer:
                 attack_query = urlencode(new_params_list)
                 attack_url = urlunsplit(('http', self.php_app_host, parts.path, attack_query, ''))
 
-                # 發送帶有特殊標頭的攻擊請求
+                # ★ 從資料庫讀取上下文，並準備在標頭中傳遞
                 target_param_name = candidate['source_param_name']
+                injection_context = candidate['injection_context']
+
                 headers = {
                     'X-Fuzzer-Confirm': 'SQLI',
-                    'X-Fuzzer-Param': target_param_name  # ★ 新增標頭，傳遞目標參數名
+                    'X-Fuzzer-Param': target_param_name,  # ★ 新增標頭，傳遞目標參數名
+                    'X-Fuzzer-Context': injection_context # ★ 新增標頭
                 }
-                print(f"[CONFIRM] Sending attack on param '{target_param_name}': {attack_url}")
+                print(f"[CONFIRM] Sending attack on param '{target_param_name}' with context '{injection_context}'")
                 try:
                     requests.get(attack_url, headers=headers, timeout=3)
                 except requests.RequestException as e:

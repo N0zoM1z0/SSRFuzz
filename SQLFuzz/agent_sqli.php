@@ -1,4 +1,9 @@
 <?php
+// 导入 PHPSQLParser
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+use PHPSQLParser\PHPSQLParser;
 
 if (!extension_loaded('zmark')) { return; }
 define('SQLFUZZ_PATH', __DIR__ . '/');
@@ -10,8 +15,9 @@ define('TAINT_MARKER', 'N0zo');
 require_once SQLFUZZ_PATH . 'Utils.php';
 
 // 宣告全域變數，用於在請求生命週期內傳遞參數名
-global $fuzz_param; 
+global $fuzz_param, $fuzz_value; 
 $fuzz_param = null; 
+$fuzz_value = null;
 
 // 使用 SSRFuzz 的 `taintinfer_zmark_once` 來自動尋找特徵字串並設定 $fuzz_param
 // 這個函式內部會尋找 TAINT_MARKER（我們需要稍微修改它，或者確保它能被找到）
@@ -22,6 +28,7 @@ foreach ($_GET as $key => &$value) {
     if (is_string($value) && strpos($value, TAINT_MARKER) !== false) {
         echo "[DEBUG] Source Marking: Found marker in GET['{$key}']. Value: '{$value}'\n";
         $fuzz_param = $key;
+        $fuzz_value = $value;
         zmark($value);
         echo "[DEBUG] Source Marking: Taint status for GET['{$key}'] is now: " . (zcheck($value) ? 'TAINTED' : 'CLEAN') . "\n";
         break; 
@@ -158,7 +165,7 @@ function mysqli_real_escape_string($link, $string) {
 
 // --- Sink 點偵測與報告 ---
 function mysqli_query($link, $query, $resultmode = MYSQLI_STORE_RESULT) {
-    global $fuzz_param;
+    global $fuzz_param, $fuzz_value;
 
     if (isset($_SERVER['HTTP_X_FUZZER_CONFIRM'])) {
         $fuzz_param = $_SERVER['HTTP_X_FUZZER_PARAM'] ?? null;
@@ -174,19 +181,26 @@ function mysqli_query($link, $query, $resultmode = MYSQLI_STORE_RESULT) {
     if (zcheck($query) && $fuzz_param !== null) {
 
         error_log("[DEBUG] Sink Check: PASSED! Inserting candidate into DB.");
+        $injection_context = "";
+        // --- AST / 语法 / 语义 / LLM 分析 ---
+        $source_value_clean = str_replace(TAINT_MARKER, '', $fuzz_value ?? '');
+        $analysis_result  = analyze_sql_context_and_risk($query, $source_value_clean);
+        error_log("[PASSIVE] AST Analysis Result:\n" . print_r($analysis_result, true));
+        //
 
-        $request_url = $_SERVER['REQUEST_URI'];
-        
-        // 將候選點存入資料庫
-        $db = new mysqli("ssrf_db", "root", "123456", "sqli_analysis_db");
-        if ($db->connect_errno === 0) {
-            $stmt = $db->prepare("INSERT IGNORE INTO candidates (request_url, source_param_name, sink_function) VALUES (?, ?, 'mysqli_query')");
-            $stmt->bind_param("ss", $request_url, $fuzz_param);
-            $stmt->execute();
-            $stmt->close();
-            $db->close();
+        // 只在分析器認為有利用可能時，才存入候選點
+        if ($analysis_result['is_exploitable']) {
+            $db = new mysqli("ssrf_db", "root", "123456", "sqli_analysis_db");
+            if ($db->connect_errno === 0) {
+                // ★ 將分析結果也存入資料庫
+                $stmt = $db->prepare("INSERT IGNORE INTO candidates (request_url, source_param_name, source_param_value, injection_context, risk_level, sink_function) VALUES (?, ?, ?, ?, ?, 'mysqli_query')");
+                $stmt->bind_param("sssss", $_SERVER['REQUEST_URI'], $fuzz_param, $fuzz_value, $analysis_result['context'], $analysis_result['risk_level']);
+                $stmt->execute();
+                $db->commit();
+                $stmt->close();
+                $db->close();
+            }
         }
-        error_log("[DEBUG] Sink Check: Candidate stored in database for URL: {$request_url}, parameter: {$fuzz_param}\n");
     }
     
     // 執行原始查詢
@@ -197,15 +211,10 @@ function mysqli_query($link, $query, $resultmode = MYSQLI_STORE_RESULT) {
         // ... 这里TODO ...
         $is_vuln = true;
         $details = " Potential SQL Injection detected.";
+                // ★ 從標頭中獲取 Fuzzer 正在測試的所有資訊
+        $fuzz_param = $_SERVER['HTTP_X_FUZZER_PARAM'] ?? null;
+        $injection_context = $_SERVER['HTTP_X_FUZZER_CONTEXT'] ?? 'N/A'; // Fuzzer 會把 context 傳回來
 
-        // // 判斷條件1：查詢是否引發了語法錯誤？
-        // if ($result === false) {
-        //     $error_msg = mysqli_error($link);
-        //     if (strpos(strtolower($error_msg), 'syntax') !== false) {
-        //         $is_vuln = true;
-        //         $details = "Triggered SQL Syntax Error: " . $error_msg;
-        //     }
-        // }
 
         // 如果確認漏洞，就報告！
         if ($is_vuln) {
@@ -229,7 +238,8 @@ function mysqli_query($link, $query, $resultmode = MYSQLI_STORE_RESULT) {
                 'param'      => $fuzz_param,
                 'url'        => $_SERVER['REQUEST_URI'],
                 'payload'    => $query,
-                'call_stack' => $call_stack_string
+                'call_stack' => $call_stack_string,
+                'context'    => $injection_context // ★ 將分析結果加入報告
             ]);
 
             error_log("[DEBUG] Sink Check: Reporting vulnerability to detector service...\n");

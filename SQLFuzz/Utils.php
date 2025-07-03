@@ -86,14 +86,14 @@ function taintinfer_zmark_once(&$var, $scope = null, $recursive = true)
     global $fuzz_param; // Parameter names that can trigger the vulnerability
     global $fuzz_value; // The value corresponding to the parameter that triggered the vulnerability
 //    if (!TAINTINFER_TAINT_ENABLE) return;
-    if (is_string($var) && strpos($var, "zfuzz") !== false) {
+    if (is_string($var) && strpos($var, "N0zo") !== false) {
         $fuzz_param = get_variable_name($var, $scope);
     //    var_dump('get_variable_name()',$fuzz_param);
         $fuzz_value = $var;
         zmark($var);
     } elseif (is_array($var) && $recursive) {
         foreach ($var as $key => &$value) {
-            if (strpos($value, "zfuzz") !== false) {
+            if (strpos($value, "N0zo") !== false) {
                 $fuzz_param = $key;
                 $fuzz_value = $value;
                 taintinfer_zmark_once($value, $scope, $recursive);
@@ -662,5 +662,123 @@ function taintinfer_translate($str)
         return $taintinfer_translate_lang[$str];
     } else {
         return $str;
+    }
+}
+
+use PHPSQLParser\PHPSQLParser;
+/**
+ * ★ 新增：分析汙染資料在 SQL AST 中的上下文 (穩健版)
+ * @param string $sql_query 完整的 SQL 查詢
+ * @param string $tainted_value 汙染的原始值 (不含 N0zo)
+ * @return string 分析結果的描述
+ */
+function analyze_sql_context($sql_query, $tainted_value) { // useable
+    if (empty($tainted_value)) {
+        return "SOURCE_VALUE_IS_EMPTY";
+    }
+    if (!class_exists('PHPSQLParser\PHPSQLParser')) {
+        return "AST_ANALYSIS_SKIPPED (Parser library not found)";
+    }
+
+    try {
+        $parser = new PHPSQLParser($sql_query);
+        $ast = $parser->parsed;
+
+        // 我們只關心 WHERE 子句中的情況
+        if (!isset($ast['WHERE'])) {
+            return "NO_WHERE_CLAUSE";
+        }
+
+        // 直接遍歷 WHERE 子句中的表達式
+        foreach ($ast['WHERE'] as $expr) {
+            // 我們要找的是 'const' (常數) 類型的節點
+            if ($expr['expr_type'] !== 'const') {
+                continue;
+            }
+
+            // 檢查這個常數節點的值是否包含了我們的汙染源
+            if (stripos($expr['base_expr'], $tainted_value) !== false) {
+                $base_expr = $expr['base_expr'];
+                
+                // 判斷這個常數是否被引號包裹
+                if (substr($base_expr, 0, 1) === "'" && substr($base_expr, -1) === "'") {
+                    return "QUOTED_STRING_IN_WHERE"; // 'value' -> 被引號包裹的字串
+                } else {
+                    return "UNQUOTED_VALUE_IN_WHERE"; // value -> 未被引號包裹，極高風險！
+                }
+            }
+        }
+
+        return "TAINTED_VALUE_NOT_FOUND_IN_WHERE_CONSTANTS";
+
+    } catch (\Exception $e) {
+        return "AST_PARSING_FAILED: " . $e->getMessage();
+    }
+}
+
+// ==================================================================
+// == 核心升級：高級 AST 分析器
+// ==================================================================
+
+/**
+ * 分析汙染資料在 SQL AST 中的上下文，並評估風險
+ * @param string $sql_query 完整的 SQL 查詢
+ * @param string $tainted_value 汙染的原始值 (不含 N0zo)
+ * @return array 包含詳細分析結果的陣列
+ */
+function analyze_sql_context_and_risk($sql_query, $tainted_value) {
+    $result = [
+        'context'      => 'UNKNOWN',
+        'risk_level'   => 'INFO',
+        'details'      => 'Analysis could not determine injection context.',
+        'is_exploitable' => false
+    ];
+
+    if (empty($tainted_value)) {
+        $result['details'] = 'Source value is empty.';
+        return $result;
+    }
+    if (!class_exists('PHPSQLParser\PHPSQLParser')) {
+        $result['details'] = 'AST_ANALYSIS_SKIPPED (Parser library not found)';
+        return $result;
+    }
+
+    try {
+        $parser = new PHPSQLParser($sql_query);
+        $ast = $parser->parsed;
+
+        // 我們只關心 WHERE 子句中的情況
+        if (!isset($ast['WHERE'])) {
+            $result['details'] = 'Tainted value does not appear in a WHERE clause.';
+            return $result;
+        }
+
+        foreach ($ast['WHERE'] as $expr) {
+            if ($expr['expr_type'] !== 'const' || stripos($expr['base_expr'], $tainted_value) === false) {
+                continue;
+            }
+
+            $base_expr = $expr['base_expr'];
+            if (substr($base_expr, 0, 1) === "'" && substr($base_expr, -1) === "'") {
+                $result['context']      = 'QUOTED_STRING_IN_WHERE';
+                $result['risk_level']   = 'HIGH';
+                $result['details']      = 'Tainted data is injected into a quoted string constant within a WHERE clause. High potential for standard SQL injection.';
+                $result['is_exploitable'] = true;
+            } else {
+                $result['context']      = 'UNQUOTED_VALUE_IN_WHERE';
+                $result['risk_level']   = 'CRITICAL';
+                $result['details']      = 'Tainted data is injected as an unquoted value (likely numeric) within a WHERE clause. Critical risk!';
+                $result['is_exploitable'] = true;
+            }
+            // 找到第一個匹配的就返回
+            return $result;
+        }
+        
+        $result['details'] = 'Tainted value was not found within a constant in the WHERE clause.';
+        return $result;
+
+    } catch (\Exception $e) {
+        $result['details'] = "AST_PARSING_FAILED: " . $e->getMessage();
+        return $result;
     }
 }
